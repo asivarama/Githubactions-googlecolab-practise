@@ -1,0 +1,46 @@
+name: Build and Deploy Notebook
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.ipynb'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install notebook nbconvert ipykernel nbformat==5.4.0 jupyter-client==6.1.12
+
+      # 🔨 BUILD STEP: Convert notebook to HTML (could also be PDF or Python script)
+      - name: Convert notebook to HTML
+        run: |
+          mkdir -p deployed
+          jupyter nbconvert --execute demo.ipynb --to html --output deployed/demo.html
+
+      # 🚀 DEPLOY STEP: Push HTML to a deployed/ folder in main branch
+      - name: Commit and deploy converted notebook
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add deployed/
+          git commit -m "🚀 Deployed demo.html from demo.ipynb" || echo "No changes"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
